@@ -429,335 +429,233 @@
 </div>
 
 <script>
-    // --- Глобальные переменные ---
+    // Глобальные переменные
+    let ws;
     let currentUser = null;
-    let nextMsgId = 1;
-    let contextTargetMsg = null;
-    let replyTargetMsgId = null;
-    let currentChatId = 'support';
-    let ws = null;
+    let currentChatId = "support";
 
-    const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
-
-    // --- WebSocket подключение ---
+    // Подключение к WebSocket
     function connectWebSocket() {
-        ws = new WebSocket("ws://" + location.host + "/chat");
+        // Закрываем старое соединение
+        if (ws) {
+            ws.close();
+        }
 
-        ws.onopen = () => console.log("WebSocket подключён");
+        // Создаём безопасное соединение (wss://)
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const url = protocol + "//" + location.host + "/chat?chatId=" + currentChatId;
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+            console.log("✅ WebSocket подключён к чату:", currentChatId);
+        };
 
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            if (data.type === "message" && data.chatId === currentChatId) {
+            if (data.chatId === currentChatId) {
                 const area = document.getElementById("msgs-area");
                 const msgEl = createMsgElement(data.text, data.from !== currentUser?.profile?.nick, data.quoteText);
                 area.appendChild(msgEl);
                 area.scrollTop = area.scrollHeight;
             }
-            if (data.type === "newGroup" && data.userId === currentUser.email) {
-                addChatToSidebar(data.chatId, data.name, "👥", "#FF9800");
-            }
         };
 
-        ws.onclose = () => setTimeout(connectWebSocket, 1000);
-    }
-
-    // --- UI Navigation ---
-    function nav(screenId) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        const target = document.getElementById(screenId + '-screen');
-        if (target) target.classList.add('active');
-        if (screenId === 'settings') loadSettingsUI();
-        if (screenId === 'chat') loadChatUI();
-        hideContextMenu();
-        cancelReply();
-    }
-
-    // --- Функции авторизации ---
-    function doRegister() {
-        const email = document.getElementById('reg-email').value;
-        const pass = document.getElementById('reg-pass').value;
-        if (!email || !pass) return alert("Введите Email и пароль");
-
-        fetch('/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password: pass })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                currentUser = { email, profile: null };
-                nav('onboarding');
-            } else {
-                alert("Пользователь уже существует");
-            }
-        });
-    }
-
-    function doLogin() {
-        const email = document.getElementById('log-email').value;
-        const pass = document.getElementById('log-pass').value;
-        const err = document.getElementById('log-error');
-
-        fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password: pass })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                currentUser = data.user;
-                if (currentUser.profile) {
-                    nav('chat');
-                    connectWebSocket();
-                } else {
-                    nav('onboarding');
-                }
-            } else {
-                err.style.display = 'block';
-                err.innerText = "Неверный логин или пароль";
-            }
-        });
-    }
-
-    // --- Онбординг ---
-    function finishOnboarding() {
-        const nick = document.getElementById('setup-nick').value || "User";
-        const username = document.getElementById('setup-user').value || "@user";
-        const imgSrc = document.getElementById('setup-avatar-preview').src;
-        const avatar = imgSrc.includes("placeholder") ? defaultAvatar : imgSrc;
-        const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-
-        fetch('/api/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nick, username, avatar, theme })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                currentUser.profile = { nick, username, avatar, theme };
-                connectWebSocket();
-                nav('chat');
-            }
-        });
-    }
-
-    // --- Работа с чатами ---
-    function createGroup() {
-        const groupName = document.getElementById('new-group-name').value.trim() || "Новая группа";
-        const newId = 'group_' + Date.now();
-
-        fetch('/api/group', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId: newId, name: groupName })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                addChatToSidebar(newId, groupName, "👥", "#FF9800");
-                switchChat(newId);
-                closeModal('group-modal');
-            }
-        });
-    }
-
-    function addChatToSidebar(id, name, icon, bg) {
-        const chatList = document.getElementById('chat-list');
-        const isActive = id === currentChatId ? ' active' : '';
-        const itemHTML = `
-            <div class="chat-item-container">
-                <div id="chat-${id}" class="chat-item${isActive}" onclick="switchChat('${id}')">
-                    <div style="width: 40px; height: 40px; background: ${bg}; border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; margin-right: 10px;">${icon}</div>
-                    <div>
-                        <strong>${name}</strong>
-                        <div style="font-size: 0.8em; color: var(--text-sub);">Создана вами</div>
-                    </div>
-                </div>
-            </div>
-        `;
-        chatList.insertAdjacentHTML('beforeend', itemHTML);
-    }
-
-    function switchChat(chatId) {
-        if (currentChatId === chatId) return;
-        document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
-        document.getElementById(`chat-${chatId}`)?.classList.add('active');
-        document.getElementById('chat-title').innerText =
-            chatId === 'support' ? 'Техподдержка Forevo' :
-            document.getElementById(`chat-${chatId} strong`)?.innerText || 'Чат';
-
-        const area = document.getElementById('msgs-area');
-        area.innerHTML = '<div class="msg msg-in">Загрузка сообщений...</div>';
-        area.scrollTop = area.scrollHeight;
-
-        // На реальном сервере здесь был бы fetch(`/api/messages?chatId=${chatId}`)
-        setTimeout(() => {
-            area.innerHTML = '';
-            if (chatId === 'support') {
-                const initialMsg = createMsgElement("Здравствуйте! 👋 Это автоматическая служба поддержки. Задайте свой вопрос.", false, null);
-                area.appendChild(initialMsg);
-            } else {
-                const welcomeMsg = createMsgElement(`Вы открыли чат "${document.getElementById(`chat-${chatId} strong`)?.innerText}". Отправьте первое сообщение!`, false, null);
-                area.appendChild(welcomeMsg);
-            }
-            area.scrollTop = area.scrollHeight;
-        }, 500);
-
-        currentChatId = chatId;
-    }
-
-    // --- Отправка сообщений ---
-    function sendMsg() {
-        const input = document.getElementById('msg-input');
-        const txt = input.value.trim();
-        if (!txt) return;
-
-        const area = document.getElementById('msgs-area');
-        const quoteText = replyTargetMsgId ? area.querySelector(`[data-msg-id="${replyTargetMsgId}"]`).innerText : null;
-
-        const msgData = {
-            type: "message",
-            chatId: currentChatId,
-            from: currentUser.profile.nick,
-            text: txt,
-            quoteText: quoteText
+        ws.onerror = (error) => {
+            console.error("❌ Ошибка WebSocket:", error);
         };
 
-        ws.send(JSON.stringify(msgData));
-
-        const myMsg = createMsgElement(txt, true, quoteText);
-        area.appendChild(myMsg);
-        area.scrollTop = area.scrollHeight;
-
-        input.value = '';
-        cancelReply();
+        ws.onclose = () => {
+            console.log("🔁 Переподключение WebSocket...");
+            setTimeout(connectWebSocket, 1000);
+        };
     }
 
-    function createMsgElement(text, isOutgoing, quoteText) {
-        const msg = document.createElement('div');
-        msg.className = 'msg ' + (isOutgoing ? 'msg-out' : 'msg-in');
-        msg.setAttribute('data-msg-id', nextMsgId++);
-        msg.oncontextmenu = (e) => showContextMenu(e, msg);
+    // Создание элемента сообщения
+    function createMsgElement(text, isOwn, quoteText = null) {
+        const msg = document.createElement("div");
+        msg.className = isOwn ? "msg own" : "msg";
 
-        let content = '';
-        if (quoteText) content += `<div class="msg-quote">${quoteText.substring(0, 50)}...</div>`;
-        content += text;
-        msg.innerHTML = content;
+        if (quoteText) {
+            const quote = document.createElement("div");
+            quote.className = "quote";
+            quote.textContent = quoteText;
+            msg.appendChild(quote);
+        }
+
+        const textEl = document.createElement("div");
+        textEl.className = "msg-text";
+        textEl.textContent = text;
+        msg.appendChild(textEl);
+
         return msg;
     }
 
-    // --- Профиль и настройки ---
-    function loadSettingsUI() {
-        const p = currentUser.profile;
-        document.getElementById('settings-avatar-preview').src = p.avatar;
-        document.getElementById('set-nick').value = p.nick;
-        document.getElementById('set-user').value = p.username;
-        updateThemeIcon();
+    // Отправка сообщения
+    function sendMessage() {
+        const input = document.getElementById("msg-input");
+        const text = input.value.trim();
+        if (!text || !currentUser) return;
+
+        const message = {
+            chatId: currentChatId,
+            from: currentUser.profile.nick,
+            text: text,
+            quoteText: null
+        };
+
+        ws.send(JSON.stringify(message));
+
+        input.value = "";
     }
 
-    function saveSettings() {
-        const nick = document.getElementById('set-nick').value;
-        const username = document.getElementById('set-user').value;
-        const avatar = document.getElementById('settings-avatar-preview').src;
+    // Переключение чата
+    function switchChat(chatId) {
+        if (currentChatId === chatId) return;
 
-        fetch('/api/profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nick, username, avatar })
-        })
-        .then(() => {
-            currentUser.profile.nick = nick;
-            currentUser.profile.username = username;
-            currentUser.profile.avatar = avatar;
-            alert("Сохранено!");
-            nav('chat');
-        });
+        document.querySelectorAll(".chat-item.active").forEach(el => el.classList.remove("active"));
+        document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add("active");
+
+        currentChatId = chatId;
+        document.getElementById("current-chat-name").textContent =
+            chatId === "support" ? "Техподдержка Forevo" : "Мой чат";
+
+        connectWebSocket();
     }
 
-    function doLogout() {
-        currentUser = null;
-        document.body.classList.remove('dark-mode');
-        nav('welcome');
-    }
+    // Контекстное меню
+    document.addEventListener("contextmenu", (e) => {
+        const msg = e.target.closest(".msg");
+        if (!msg) return;
 
-    // --- Контекстное меню ---
-    function showContextMenu(e, msgElement) {
         e.preventDefault();
-        contextTargetMsg = msgElement;
-        const menu = document.getElementById('context-menu');
-        menu.style.left = (e.clientX + 5) + 'px';
-        menu.style.top = (e.clientY - 10) + 'px';
-        document.getElementById('blur-overlay').style.display = 'block';
-        menu.style.display = 'block';
-        menu.classList.add('active');
+        const menu = document.getElementById("context-menu");
+        menu.style.display = "block";
+        menu.style.left = e.pageX + "px";
+        menu.style.top = e.pageY + "px";
+
+        const quoteText = msg.querySelector(".msg-text")?.textContent;
+        document.getElementById("reply-btn").onclick = () => {
+            document.getElementById("msg-input").value = `> ${quoteText}\n`;
+            menu.style.display = "none";
+        };
+    });
+
+    document.addEventListener("click", () => {
+        document.getElementById("context-menu").style.display = "none";
+    });
+
+    // Отправка по Enter
+    document.getElementById("msg-input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Начало: проверка пользователя
+    window.onload = () => {
+        const savedUser = localStorage.getItem("forevo-user");
+        if (savedUser) {
+            currentUser = JSON.parse(savedUser);
+            showChat();
+        } else {
+            showAuth();
+        }
+    };
+
+    // Показ формы авторизации
+    function showAuth() {
+        document.getElementById("auth-screen").style.display = "block";
+        document.getElementById("chat-screen").style.display = "none";
     }
 
-    function hideContextMenu() {
-        const menu = document.getElementById('context-menu');
-        if (menu.classList.contains('active')) {
-            menu.classList.remove('active');
-            setTimeout(() => {
-                menu.style.display = 'none';
-                document.getElementById('blur-overlay').style.display = 'none';
-                contextTargetMsg = null;
-            }, 200);
+    // Показ чата
+    function showChat() {
+        document.getElementById("auth-screen").style.display = "none";
+        document.getElementById("chat-screen").style.display = "flex";
+        document.getElementById("user-nick").textContent = currentUser.profile.nick;
+        connectWebSocket();
+    }
+
+    // Регистрация
+    async function register() {
+        const email = document.getElementById("email").value;
+        const pass = document.getElementById("password").value;
+
+        if (!email || !pass) return alert("Заполните все поля");
+
+        const res = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password: pass })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            alert(data.error);
+        } else {
+            currentUser = { email, profile: null };
+            localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+            document.getElementById("auth-step-1").style.display = "none";
+            document.getElementById("auth-step-2").style.display = "block";
         }
     }
 
-    function replyToMessage() {
-        if (!contextTargetMsg) return hideContextMenu();
-        replyTargetMsgId = contextTargetMsg.getAttribute('data-msg-id');
-        const text = contextTargetMsg.innerText.trim().substring(0, 80) + "...";
-        document.getElementById('reply-box-text').innerText = text;
-        document.getElementById('reply-box').style.display = 'block';
-        document.getElementById('msg-input').focus();
-        hideContextMenu();
-    }
+    // Сохранение профиля
+    async function saveProfile() {
+        const nick = document.getElementById("nick").value;
+        const username = document.getElementById("username").value;
+        const avatar = document.querySelector('input[name="avatar"]:checked')?.value;
+        const theme = document.querySelector('input[name="theme"]:checked')?.value;
 
-    function cancelReply() {
-        replyTargetMsgId = null;
-        document.getElementById('reply-box').style.display = 'none';
-    }
-
-    function addReaction(emoji) {
-        if (!contextTargetMsg) return hideContextMenu();
-        let reactions = contextTargetMsg.querySelector('.msg-reactions');
-        if (!reactions) {
-            reactions = document.createElement('div');
-            reactions.className = 'msg-reactions';
-            contextTargetMsg.appendChild(reactions);
+        if (!nick || !username || !avatar) {
+            return alert("Заполните все поля");
         }
-        reactions.innerText = emoji;
-        hideContextMenu();
+
+        currentUser.profile = { nick, username, avatar, theme };
+        localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+
+        // Сохраняем в сервер (временно)
+        await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(currentUser.profile)
+        });
+
+        showChat();
     }
 
-    // --- Тема ---
-    function toggleTheme() {
-        document.body.classList.toggle('dark-mode');
-        const theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-        currentUser.profile.theme = theme;
-        updateThemeIcon();
-        // На сервере: fetch('/api/theme', { method: 'PUT', body: JSON.stringify({ theme }) })
+    // Выход
+    function logout() {
+        localStorage.removeItem("forevo-user");
+        currentUser = null;
+        showAuth();
     }
 
-    function updateThemeIcon() {
-        const isDark = document.body.classList.contains('dark-mode');
-        document.getElementById('theme-icon').innerText = isDark ? "☀️" : "🌑";
+    // Вход
+    async function login() {
+        const email = document.getElementById("login-email").value;
+        const pass = document.getElementById("login-password").value;
+
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password: pass })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            alert("Неверный email или пароль");
+        } else {
+            currentUser = data.user;
+            localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+            showChat();
+        }
     }
-
-    // --- Инициализация ---
-    document.addEventListener('DOMContentLoaded', () => {
-        // При загрузке — можно проверить сессию: fetch('/api/session')
-        nav('welcome');
-    });
-
-    document.getElementById('msg-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMsg();
-    });
 </script>
 
 </body>
+
 </html>
