@@ -1,661 +1,474 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forevo - Мессенджер</title>
+    <meta charset="UTF-8" />
+    <title>Forevo Messenger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-        /* --- CSS Переменные (Темы) --- */
-        :root {
-            /* Светлая тема (по умолчанию) */
-            --bg-app: #ffffff;
-            --bg-body: #F5F7FA;
-            --text-main: #37474F;
-            --text-sub: #78909C;
-            --primary: #4FC3F7;
-            --primary-grad: linear-gradient(135deg, #4FC3F7, #0288D1);
-            --sidebar-bg: #F8FDFF;
-            --input-bg: #E1F5FE;
-            --border: #E1F5FE;
-            --msg-in: #FFFFFF;
-            --msg-out: linear-gradient(135deg, #4FC3F7, #29B6F6);
-            --shadow: 0 10px 40px rgba(3, 169, 244, 0.15);
-            --danger: #FF5252;
-        }
-
-        /* Темная тема */
-        body.dark-mode {
-            --bg-app: #1E293B;
-            --bg-body: #0F172A;
-            --text-main: #E2E8F0;
-            --text-sub: #94A3B8;
-            --primary: #38BDF8;
-            --primary-grad: linear-gradient(135deg, #0EA5E9, #0284C7);
-            --sidebar-bg: #111827;
-            --input-bg: #334155;
-            --border: #334155;
-            --msg-in: #334155;
-            --msg-out: linear-gradient(135deg, #0EA5E9, #0284C7);
-            --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            --danger: #F87171;
-        }
-
-        /* --- Базовые стили и КОНТЕЙНЕР --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--bg-body);
-            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            transition: background 0.3s;
-        }
-
-        .app-container {
-            width: 90%;
-            max-width: 900px;
-            height: 85vh;
-            background: var(--bg-app);
-            border-radius: 24px;
-            box-shadow: var(--shadow);
+            height: 100vh;
             overflow: hidden;
+        }
+
+        /* Экран авторизации */
+        #auth-screen {
             display: flex;
-            position: relative;
-            transition: background 0.3s, box-shadow 0.3s;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: #4caf50;
+            color: white;
+        }
+        #auth-screen h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .auth-step {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 16px;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .auth-step input {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .auth-step button {
+            width: 100%;
+            padding: 14px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .auth-step button:hover {
+            background: #3d8b40;
+        }
+        .auth-step a {
+            color: #4caf50;
+            text-decoration: none;
+        }
+        .auth-step a:hover {
+            text-decoration: underline;
         }
 
-        /* --- Анимации и Экраны --- */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .screen {
-            flex-grow: 1;
+        /* Основной экран */
+        #chat-screen {
             display: none;
             width: 100%;
             height: 100%;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            animation: fadeIn 0.4s ease-out;
         }
 
-        .screen.active {
-            display: flex;
-        }
-
-        /* --- Общие элементы UI --- */
-        .form-box { width: 100%; max-width: 400px; padding: 40px; text-align: center; }
-
-        input {
-            width: 100%; padding: 15px; margin-bottom: 15px; background: var(--input-bg);
-            border: 2px solid transparent; border-radius: 12px; color: var(--text-main);
-            box-sizing: border-box; outline: none; transition: 0.3s;
-        }
-        input:focus { border-color: var(--primary); }
-
-        .btn {
-            width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold;
-            cursor: pointer; margin-top: 10px; transition: 0.2s transform, 0.2s opacity, 0.2s background;
-        }
-
-        .btn-primary {
-            background: var(--primary-grad); color: white;
-            box-shadow: 0 5px 15px rgba(3, 169, 244, 0.3);
-        }
-        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 8px 20px rgba(3, 169, 244, 0.4); }
-        .btn-primary:active { transform: scale(0.98); }
-
-        .btn-secondary { background: transparent; color: var(--text-sub); }
-        .btn-secondary:hover { color: var(--primary); background: var(--input-bg); }
-        .btn-secondary:active { opacity: 0.8; }
-
-        .avatar-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 20px; }
-
-        /* --- Чат Интерфейс --- */
-        .chat-layout { display: flex; width: 100%; height: 100%; }
-
+        /* Боковая панель */
         .sidebar {
-            width: 300px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--border);
+            width: 280px;
+            background: #2c2c2c;
+            color: white;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
+            height: 100%;
         }
-
-        .chat-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-app);
+        .sidebar-header {
+            padding: 16px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-bottom: 1px solid #404040;
         }
-
-        .header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .my-profile-btn {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
+        .chats-list {
+            flex: 1;
             padding: 10px;
-            border-radius: 12px;
-            transition: background 0.2s;
+            overflow-y: auto;
         }
-        .my-profile-btn:hover { background: var(--input-bg); }
-
-        .mini-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 10px;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        /* Стиль для элемента чата в сайдбаре (НОВЫЙ) */
-        .chat-item-container { padding: 10px; }
         .chat-item {
-            padding: 15px;
-            background: var(--input-bg);
-            border-radius: 12px;
             display: flex;
             align-items: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
             cursor: pointer;
-            transition: background 0.2s, box-shadow 0.2s;
         }
         .chat-item:hover {
-            box-shadow: 0 2px 8px rgba(3, 169, 244, 0.1);
+            background: #404040;
         }
         .chat-item.active {
-            background: var(--primary);
-            color: white;
+            background: #4caf50;
         }
-        .chat-item.active div { color: white !important; }
-
-        /* --- Сообщения (Анимации) --- */
-        .messages { padding: 20px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg {
-            max-width: 70%; padding: 10px 15px; border-radius: 18px; font-size: 0.95em; line-height: 1.4; position: relative; cursor: pointer;
-            transition: all 0.2s ease-out;
-        }
-        .msg:hover {
-            opacity: 0.95;
-            transform: translateY(-1px);
-        }
-        .msg-in { background: var(--msg-in); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .msg-out { background: var(--msg-out); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg-quote { border-left: 3px solid var(--primary); padding-left: 8px; margin-bottom: 5px; font-size: 0.85em; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .msg-reactions { position: absolute; bottom: -15px; right: 0; background: var(--msg-in); border: 1px solid var(--border); border-radius: 15px; padding: 2px 5px; font-size: 0.8em; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-
-        /* --- Модальное окно и Меню --- */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s;
-        }
-        .modal-content {
-            background: var(--bg-app);
-            padding: 30px;
-            border-radius: 12px;
-            min-width: 350px;
-            box-shadow: var(--shadow);
-        }
-        .modal-close-btn { background: none; border: none; font-size: 1.5em; cursor: pointer; color: var(--text-sub); }
-        #blur-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 999;
-            backdrop-filter: blur(5px);
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        #context-menu {
-            position: fixed;
-            z-index: 1000;
-            background: var(--bg-app);
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            min-width: 200px;
-            overflow: hidden;
-            display: none;
-            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-            transform-origin: top left;
-            transform: scale(0.9);
-            opacity: 0;
-        }
-        #context-menu.active {
-            display: block;
-            transform: scale(1);
-            opacity: 1;
-        }
-        .menu-item { padding: 10px 15px; cursor: pointer; color: var(--text-main); font-size: 0.9em; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .menu-item:hover { background: var(--input-bg); }
-        .reply-box { background: var(--input-bg); padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--primary); margin-bottom: 10px; display: none; position: relative; }
-        .typing-indicator { font-size: 0.9em; color: #4CAF50; transition: opacity 0.3s; }
-
-        /* --- Блок Ввода (Фикс выравнивания) --- */
-        .input-box {
+        .chat-item-icon {
+            width: 40px;
+            height: 40px;
+            background: #4caf50;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            padding: 15px 20px;
-            border-top: 1px solid var(--border);
-            gap: 10px;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+        .chat-item-name {
+            font-weight: 500;
         }
 
-        .input-box input {
-            flex-grow: 1;
-            margin-bottom: 0;
+        /* Основной чат */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #e5e5e5;
+        }
+        .chat-header {
+            padding: 14px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .msgs-area {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f9f9f9;
+        }
+        .msg {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+            word-wrap: break-word;
+        }
+        .msg.own {
+            align-self: flex-end;
+            background: #4caf50;
+            color: white;
+        }
+        .msg-text {
+            font-size: 15px;
+        }
+        .quote {
+            font-size: 14px;
+            color: #666;
+            border-left: 3px solid #ccc;
+            padding-left: 8px;
+            margin-bottom: 4px;
+        }
+        .input-area {
+            padding: 12px;
+            background: white;
+            border-top: 1px solid #ddd;
+        }
+        #msg-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: none;
+            height: 60px;
+            font-size: 15px;
+            outline: none;
+        }
+        #msg-input:focus {
+            border-color: #4caf50;
         }
 
-        .input-box .btn-primary {
-            width: auto;
-            margin: 0;
-            flex-shrink: 0;
+        /* Контекстное меню */
+        #context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            display: none;
+            z-index: 1000;
+            font-size: 14px;
         }
-
+        #context-menu button {
+            width: 100%;
+            text-align: left;
+            padding: 8px 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        #context-menu button:hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
-<body onclick="hideContextMenu()">
+<body>
 
-<div id="blur-overlay" onclick="hideContextMenu()"></div>
-
-<div class="app-container">
-
-    <div id="context-menu" oncontextmenu="return false;">
-        <div id="reaction-picker">
-            <span onclick="addReaction('👍')">👍</span>
-            <span onclick="addReaction('❤️')">❤️</span>
-            <span onclick="addReaction('😂')">😂</span>
-            <span onclick="addReaction('🔥')">🔥</span>
-            <span onclick="addReaction('❓')">❓</span>
-        </div>
-        <div class="menu-item" onclick="replyToMessage()">Ответить</div>
-        <div class="menu-item" onclick="copyMessage()">Копировать</div>
-        <div class="menu-item menu-item-danger" onclick="deleteMessage('self')">Удалить (Для себя)</div>
-        <div class="menu-item menu-item-danger" onclick="deleteMessage('all')">Удалить (Для всех)</div>
-    </div>
-
-    <div id="group-modal" class="modal">
-        <div class="modal-content">
-            <div style="display: flex; justify-content: flex-end;">
-                <button onclick="closeModal('group-modal')" class="modal-close-btn">✕</button>
+    <!-- Экран авторизации -->
+    <div id="auth-screen">
+        <h1>💬 Forevo Messenger</h1>
+        <div class="auth-step" id="auth-step-1">
+            <h2>Привет!</h2>
+            <p>Зарегистрируйтесь, чтобы начать общение</p>
+            <input type="email" id="email" placeholder="Email" />
+            <input type="password" id="password" placeholder="Пароль" />
+            <button onclick="register()">Создать аккаунт</button>
+            <p><small>Уже есть аккаунт? <a href="#" onclick="showLogin(); return false;">Войти</a></small></p>
+            <div id="login-form" style="display:none;">
+                <input type="email" id="login-email" placeholder="Email" />
+                <input type="password" id="login-password" placeholder="Пароль" />
+                <button onclick="login()">Войти</button>
             </div>
-            <h2>Создание группы</h2>
-            <p>Введите название новой беседы.</p>
-            <input type="text" id="new-group-name" placeholder="Название группы">
-            <button class="btn btn-primary" onclick="createGroup()">Создать</button>
+        </div>
+
+        <div class="auth-step" id="auth-step-2" style="display:none;">
+            <h2>Настройте профиль</h2>
+            <input type="text" id="nick" placeholder="Ваше имя" />
+            <input type="text" id="username" placeholder="Юзернейм" />
+            <p>Аватар:</p>
+            <label><input type="radio" name="avatar" value="🤖" checked /> 🤖</label>
+            <label><input type="radio" name="avatar" value="🦊" /> 🦊</label>
+            <label><input type="radio" name="avatar" value="🐱" /> 🐱</label>
+            <p>Тема:</p>
+            <label><input type="radio" name="theme" value="light" checked /> Светлая</label>
+            <label><input type="radio" name="theme" value="dark" /> Тёмная</label>
+            <button onclick="saveProfile()">Готово! В чат</button>
         </div>
     </div>
 
-    <div id="welcome-screen" class="screen">
-        <div class="form-box">
-            <h1 style="font-size: 3em; color: var(--primary);">Forevo</h1>
-            <p>Версия 9.0</p>
-            <button class="btn btn-primary" onclick="nav('login')">Войти</button>
-            <button class="btn btn-secondary" onclick="nav('register')">Создать аккаунт</button>
-        </div>
-    </div>
-
-    <div id="login-screen" class="screen">
-        <div class="form-box">
-            <h2>С возвращением!</h2>
-            <input type="email" id="log-email" placeholder="Email">
-            <input type="password" id="log-pass" placeholder="Пароль">
-            <div id="log-error" style="color: var(--danger); font-size: 0.9em; margin-bottom: 10px; display: none;">Ошибка</div>
-
-            <button class="btn btn-primary" onclick="doLogin()">Войти</button>
-            <button class="btn btn-secondary" onclick="nav('welcome')">Назад</button>
-        </div>
-    </div>
-
-    <div id="register-screen" class="screen">
-        <div class="form-box">
-            <h2>Регистрация</h2>
-            <p>Шаг 1: Данные для входа</p>
-            <input type="email" id="reg-email" placeholder="Email">
-            <input type="password" id="reg-pass" placeholder="Пароль">
-            <button class="btn btn-primary" onclick="doRegister()">Далее</button>
-            <button class="btn btn-secondary" onclick="nav('welcome')">Назад</button>
-        </div>
-    </div>
-
-    <div id="onboarding-screen" class="screen">
-        <div class="form-box">
-            <h2>Создание профиля</h2>
-            <p>Как вас будут видеть другие?</p>
-
-            <div class="avatar-upload" onclick="document.getElementById('setup-avatar-file').click()">
-                <img src="" id="setup-avatar-preview" class="avatar-preview">
-                <div class="avatar-overlay">+</div>
-            </div>
-            <input type="file" id="setup-avatar-file" style="display: none;" accept="image/*" onchange="previewAvatar(this, 'setup-avatar-preview')">
-
-            <input type="text" id="setup-nick" placeholder="Имя (например, Иван)">
-            <input type="text" id="setup-user" placeholder="@username">
-
-            <button class="btn btn-primary" onclick="finishOnboarding()">Готово! В чат</button>
-        </div>
-    </div>
-
-    <div id="chat-screen" class="screen">
-        <div class="chat-layout">
-            <div class="sidebar">
-                <div class="header">
-                    <div class="my-profile-btn" onclick="nav('settings')" title="Настройки">
-                        <img id="my-mini-avatar" src="" class="mini-avatar">
-                        <div style="font-size: 0.9em; font-weight: bold; overflow: hidden; text-overflow: ellipsis; max-width: 100px;" id="my-mini-name">User</div>
-                        <span>⚙️</span>
-                    </div>
-                    <div class="new-chat-btn" onclick="openModal('group-modal')">+</div>
-                </div>
-
-                <div class="chat-list" id="chat-list" style="overflow-y: auto;">
-                    <div class="chat-item-container">
-                        <div id="chat-support" class="chat-item active" onclick="switchChat('support')">
-                            <div style="width: 40px; height: 40px; background: #607D8B; border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; margin-right: 10px;">🛠</div>
-                            <div>
-                                <strong>Техподдержка</strong>
-                                <div style="font-size: 0.8em; color: var(--text-sub);">Всегда на связи</div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Основной экран чата -->
+    <div id="chat-screen">
+        <div class="sidebar">
+            <div class="sidebar-header">Чаты</div>
+            <div class="chats-list">
+                <div class="chat-item active" data-chat-id="support" onclick="switchChat('support')">
+                    <div class="chat-item-icon">💬</div>
+                    <div class="chat-item-name">Техподдержка Forevo</div>
                 </div>
             </div>
-
-            <div class="chat-area">
-                <div class="header chat-header">
-                    <strong style="margin-right: 15px;" id="chat-title">Техподдержка Forevo</strong>
-                    <span id="typing-status" class="typing-indicator" style="opacity: 0;">печатает...</span>
-                </div>
-                <div class="messages" id="msgs-area">
-                </div>
-
-                <div class="input-box">
-                    <div id="reply-box" class="reply-box">
-                        <span style="font-weight: bold;">Ответ на:</span>
-                        <div id="reply-box-text" class="reply-box-text"></div>
-                        <span class="reply-box-close" onclick="cancelReply()">✕</span>
-                    </div>
-                    <input type="text" id="msg-input" placeholder="Напишите сообщение...">
-                    <button class="btn btn-primary" onclick="sendMsg()">➤</button>
-                </div>
+            <div style="padding: 12px; color: #aaa; font-size: 14px;">
+                <div onclick="logout()" style="cursor: pointer;">← Выход</div>
+            </div>
+        </div>
+        <div class="main">
+            <div class="chat-header" id="current-chat-name">Техподдержка Forevo</div>
+            <div id="msgs-area" class="msgs-area"></div>
+            <div class="input-area">
+                <textarea id="msg-input" placeholder="Введите сообщение..."></textarea>
             </div>
         </div>
     </div>
 
-    <div id="settings-screen" class="screen">
-        <div class="form-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>Настройки</h2>
-                <button onclick="nav('chat')" style="border: none; background: none; font-size: 1.5em; cursor: pointer;">✕</button>
-            </div>
-
-            <div class="avatar-upload" onclick="document.getElementById('set-avatar-file').click()">
-                <img src="" id="settings-avatar-preview" class="avatar-preview">
-                <div class="avatar-overlay">✎</div>
-            </div>
-            <input type="file" id="set-avatar-file" style="display: none;" accept="image/*" onchange="previewAvatar(this, 'settings-avatar-preview')">
-
-            <input type="text" id="set-nick" placeholder="Имя">
-            <input type="text" id="set-user" placeholder="Username">
-
-            <div class="theme-switch" onclick="toggleTheme()">
-                <span>Темная тема</span>
-                <span id="theme-icon">🌑</span>
-            </div>
-
-            <button class="btn btn-primary" onclick="saveSettings()">Сохранить изменения</button>
-            <button class="btn btn-secondary" onclick="doLogout()">Выйти из аккаунта</button>
-            <button class="btn btn-danger" onclick="deleteAccount()">Удалить аккаунт</button>
-        </div>
+    <!-- Контекстное меню -->
+    <div id="context-menu">
+        <button id="reply-btn">💬 Ответить</button>
     </div>
 
-</div>
+    <script>
+        let ws;
+        let currentUser = null;
+        let currentChatId = "support";
 
-<script>
-    // Глобальные переменные
-    let ws;
-    let currentUser = null;
-    let currentChatId = "support";
+        function connectWebSocket() {
+            if (ws) ws.close();
 
-    // Подключение к WebSocket
-    function connectWebSocket() {
-        // Закрываем старое соединение
-        if (ws) {
-            ws.close();
+            const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+            const url = protocol + "//" + location.host + "/chat?chatId=" + currentChatId;
+            ws = new WebSocket(url);
+
+            ws.onopen = () => console.log("✅ WebSocket подключён к чату:", currentChatId);
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.chatId === currentChatId) {
+                    const area = document.getElementById("msgs-area");
+                    const msgEl = createMsgElement(data.text, data.from !== currentUser?.profile?.nick, data.quoteText);
+                    area.appendChild(msgEl);
+                    area.scrollTop = area.scrollHeight;
+                }
+            };
+            ws.onerror = (e) => console.error("❌ Ошибка WebSocket:", e);
+            ws.onclose = () => setTimeout(connectWebSocket, 1000);
         }
 
-        // Создаём безопасное соединение (wss://)
-        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-        const url = protocol + "//" + location.host + "/chat?chatId=" + currentChatId;
-        ws = new WebSocket(url);
+        function createMsgElement(text, isOwn, quoteText = null) {
+            const msg = document.createElement("div");
+            msg.className = isOwn ? "msg own" : "msg";
+            if (quoteText) {
+                const quote = document.createElement("div");
+                quote.className = "quote";
+                quote.textContent = quoteText;
+                msg.appendChild(quote);
+            }
+            const textEl = document.createElement("div");
+            textEl.className = "msg-text";
+            textEl.textContent = text;
+            msg.appendChild(textEl);
+            return msg;
+        }
 
-        ws.onopen = () => {
-            console.log("✅ WebSocket подключён к чату:", currentChatId);
-        };
+        function sendMessage() {
+            const input = document.getElementById("msg-input");
+            const text = input.value.trim();
+            if (!text || !currentUser) return;
 
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            if (data.chatId === currentChatId) {
-                const area = document.getElementById("msgs-area");
-                const msgEl = createMsgElement(data.text, data.from !== currentUser?.profile?.nick, data.quoteText);
-                area.appendChild(msgEl);
-                area.scrollTop = area.scrollHeight;
+            const message = {
+                chatId: currentChatId,
+                from: currentUser.profile.nick,
+                text: text,
+                quoteText: null
+            };
+
+            ws.send(JSON.stringify(message));
+            input.value = "";
+        }
+
+        function switchChat(chatId) {
+            document.querySelectorAll(".chat-item.active").forEach(el => el.classList.remove("active"));
+            document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add("active");
+            currentChatId = chatId;
+            document.getElementById("current-chat-name").textContent =
+                chatId === "support" ? "Техподдержка Forevo" : "Мой чат";
+            connectWebSocket();
+        }
+
+        document.addEventListener("contextmenu", (e) => {
+            const msg = e.target.closest(".msg");
+            if (!msg) return;
+
+            e.preventDefault();
+            const menu = document.getElementById("context-menu");
+            menu.style.display = "block";
+            menu.style.left = e.pageX + "px";
+            menu.style.top = e.pageY + "px";
+
+            const quoteText = msg.querySelector(".msg-text")?.textContent;
+            document.getElementById("reply-btn").onclick = () => {
+                document.getElementById("msg-input").value = `> ${quoteText}\n`;
+                menu.style.display = "none";
+            };
+        });
+
+        document.addEventListener("click", () => {
+            document.getElementById("context-menu").style.display = "none";
+        });
+
+        document.getElementById("msg-input").addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.onload = () => {
+            const savedUser = localStorage.getItem("forevo-user");
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showChat();
+            } else {
+                showAuth();
             }
         };
 
-        ws.onerror = (error) => {
-            console.error("❌ Ошибка WebSocket:", error);
-        };
-
-        ws.onclose = () => {
-            console.log("🔁 Переподключение WebSocket...");
-            setTimeout(connectWebSocket, 1000);
-        };
-    }
-
-    // Создание элемента сообщения
-    function createMsgElement(text, isOwn, quoteText = null) {
-        const msg = document.createElement("div");
-        msg.className = isOwn ? "msg own" : "msg";
-
-        if (quoteText) {
-            const quote = document.createElement("div");
-            quote.className = "quote";
-            quote.textContent = quoteText;
-            msg.appendChild(quote);
+        function showAuth() {
+            document.getElementById("auth-screen").style.display = "flex";
+            document.getElementById("chat-screen").style.display = "none";
         }
 
-        const textEl = document.createElement("div");
-        textEl.className = "msg-text";
-        textEl.textContent = text;
-        msg.appendChild(textEl);
-
-        return msg;
-    }
-
-    // Отправка сообщения
-    function sendMessage() {
-        const input = document.getElementById("msg-input");
-        const text = input.value.trim();
-        if (!text || !currentUser) return;
-
-        const message = {
-            chatId: currentChatId,
-            from: currentUser.profile.nick,
-            text: text,
-            quoteText: null
-        };
-
-        ws.send(JSON.stringify(message));
-
-        input.value = "";
-    }
-
-    // Переключение чата
-    function switchChat(chatId) {
-        if (currentChatId === chatId) return;
-
-        document.querySelectorAll(".chat-item.active").forEach(el => el.classList.remove("active"));
-        document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add("active");
-
-        currentChatId = chatId;
-        document.getElementById("current-chat-name").textContent =
-            chatId === "support" ? "Техподдержка Forevo" : "Мой чат";
-
-        connectWebSocket();
-    }
-
-    // Контекстное меню
-    document.addEventListener("contextmenu", (e) => {
-        const msg = e.target.closest(".msg");
-        if (!msg) return;
-
-        e.preventDefault();
-        const menu = document.getElementById("context-menu");
-        menu.style.display = "block";
-        menu.style.left = e.pageX + "px";
-        menu.style.top = e.pageY + "px";
-
-        const quoteText = msg.querySelector(".msg-text")?.textContent;
-        document.getElementById("reply-btn").onclick = () => {
-            document.getElementById("msg-input").value = `> ${quoteText}\n`;
-            menu.style.display = "none";
-        };
-    });
-
-    document.addEventListener("click", () => {
-        document.getElementById("context-menu").style.display = "none";
-    });
-
-    // Отправка по Enter
-    document.getElementById("msg-input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+        function showChat() {
+            document.getElementById("auth-screen").style.display = "none";
+            document.getElementById("chat-screen").style.display = "flex";
+            document.getElementById("user-nick").textContent = currentUser.profile?.nick || "Пользователь";
+            connectWebSocket();
         }
-    });
 
-    // Начало: проверка пользователя
-    window.onload = () => {
-        const savedUser = localStorage.getItem("forevo-user");
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
+        function showLogin() {
+            document.getElementById("auth-step-1").style.display = "none";
+            document.getElementById("login-form").style.display = "block";
+        }
+
+        async function register() {
+            const email = document.getElementById("email").value;
+            const pass = document.getElementById("password").value;
+            if (!email || !pass) return alert("Введите email и пароль");
+
+            const res = await fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password: pass })
+            });
+
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.error || "Ошибка");
+            } else {
+                currentUser = { email, profile: null };
+                localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+                document.getElementById("auth-step-1").style.display = "none";
+                document.getElementById("auth-step-2").style.display = "block";
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById("login-email").value;
+            const pass = document.getElementById("login-password").value;
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password: pass })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                alert("Неверный логин или пароль");
+            } else {
+                currentUser = data.user;
+                localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+                showChat();
+            }
+        }
+
+        async function saveProfile() {
+            const nick = document.getElementById("nick").value;
+            const username = document.getElementById("username").value;
+            const avatar = document.querySelector('input[name="avatar"]:checked')?.value;
+            const theme = document.querySelector('input[name="theme"]:checked')?.value;
+
+            if (!nick || !username || !avatar) {
+                return alert("Заполните все поля");
+            }
+
+            currentUser.profile = { nick, username, avatar, theme };
+            localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+
+            await fetch("/api/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(currentUser.profile)
+            });
+
             showChat();
-        } else {
+        }
+
+        function logout() {
+            localStorage.removeItem("forevo-user");
+            currentUser = null;
             showAuth();
         }
-    };
-
-    // Показ формы авторизации
-    function showAuth() {
-        document.getElementById("auth-screen").style.display = "block";
-        document.getElementById("chat-screen").style.display = "none";
-    }
-
-    // Показ чата
-    function showChat() {
-        document.getElementById("auth-screen").style.display = "none";
-        document.getElementById("chat-screen").style.display = "flex";
-        document.getElementById("user-nick").textContent = currentUser.profile.nick;
-        connectWebSocket();
-    }
-
-    // Регистрация
-    async function register() {
-        const email = document.getElementById("email").value;
-        const pass = document.getElementById("password").value;
-
-        if (!email || !pass) return alert("Заполните все поля");
-
-        const res = await fetch("/api/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password: pass })
-        });
-
-        const data = await res.json();
-
-        if (!data.success) {
-            alert(data.error);
-        } else {
-            currentUser = { email, profile: null };
-            localStorage.setItem("forevo-user", JSON.stringify(currentUser));
-            document.getElementById("auth-step-1").style.display = "none";
-            document.getElementById("auth-step-2").style.display = "block";
-        }
-    }
-
-    // Сохранение профиля
-    async function saveProfile() {
-        const nick = document.getElementById("nick").value;
-        const username = document.getElementById("username").value;
-        const avatar = document.querySelector('input[name="avatar"]:checked')?.value;
-        const theme = document.querySelector('input[name="theme"]:checked')?.value;
-
-        if (!nick || !username || !avatar) {
-            return alert("Заполните все поля");
-        }
-
-        currentUser.profile = { nick, username, avatar, theme };
-        localStorage.setItem("forevo-user", JSON.stringify(currentUser));
-
-        // Сохраняем в сервер (временно)
-        await fetch("/api/profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(currentUser.profile)
-        });
-
-        showChat();
-    }
-
-    // Выход
-    function logout() {
-        localStorage.removeItem("forevo-user");
-        currentUser = null;
-        showAuth();
-    }
-
-    // Вход
-    async function login() {
-        const email = document.getElementById("login-email").value;
-        const pass = document.getElementById("login-password").value;
-
-        const res = await fetch("/api/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password: pass })
-        });
-
-        const data = await res.json();
-
-        if (!data.success) {
-            alert("Неверный email или пароль");
-        } else {
-            currentUser = data.user;
-            localStorage.setItem("forevo-user", JSON.stringify(currentUser));
-            showChat();
-        }
-    }
-</script>
-
+    </script>
 </body>
-
 </html>
