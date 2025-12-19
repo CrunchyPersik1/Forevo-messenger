@@ -23,6 +23,38 @@
             overflow: hidden;
         }
 
+        /* Темная тема */
+        body.dark-theme {
+            background: #121212;
+            color: #f0f0f0;
+        }
+        body.dark-theme .msgs-area,
+        body.dark-theme .input-area,
+        body.dark-theme .auth-step,
+        body.dark-theme #msg-input {
+            background: #1e1e1e;
+            color: #f0f0f0;
+            border-color: #444;
+        }
+        body.dark-theme .msg {
+            background: #2c2c2c;
+            color: #f0f0f0;
+        }
+        body.dark-theme .quote {
+            color: #aaa;
+            border-left-color: #666;
+        }
+        body.dark-theme #context-menu,
+        body.dark-theme #profile-menu {
+            background: #2c2c2c;
+            border-color: #444;
+            color: #f0f0f0;
+        }
+        body.dark-theme .menu-item:hover,
+        body.dark-theme #context-menu button:hover {
+            background: #3c3c3c;
+        }
+
         /* Экран авторизации */
         #auth-screen {
             display: flex;
@@ -100,7 +132,47 @@
             font-size: 1.2em;
             font-weight: bold;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
+        .sidebar-header .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--brand-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .user-nick {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .search-box {
+            padding: 10px;
+            background: #f0f0f0;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
         .chats-list {
             flex: 1;
             padding: 10px;
@@ -135,7 +207,13 @@
             font-weight: 500;
         }
 
-        /* Верхнее меню чата */
+        /* Основной чат */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f9f9f9;
+        }
         .chat-header {
             padding: 14px;
             background: white;
@@ -144,41 +222,16 @@
             align-items: center;
             gap: 12px;
         }
-        .user-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 8px;
-        }
-        .user-badge:hover {
-            background: #f0f0f0;
-        }
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: var(--brand-color);
-            color: white;
+        .chat-placeholder {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-        }
-        .user-nick {
-            font-weight: 500;
-            font-size: 15px;
-        }
-
-        /* Основной чат */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+            color: #888;
+            font-size: 18px;
             background: #f9f9f9;
         }
+
         .msgs-area {
             padding: 16px;
             overflow-y: auto;
@@ -245,24 +298,10 @@
             align-self: flex-end;
         }
 
-        /* Поиск */
-        .search-box {
-            padding: 10px;
-            background: #f0f0f0;
-            border-bottom: 1px solid var(--border);
-        }
-        .search-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
         /* Меню профиля */
         #profile-menu {
             position: absolute;
-            top: 60px;
+            top: 50px;
             right: 20px;
             background: white;
             border: 1px solid var(--border);
@@ -345,7 +384,7 @@
             <label>или</label>
             <input type="file" id="avatar-upload" accept="image/*" />
             <p>Тема:</p>
-            <label><input type="radio" name="theme" value="light" checked /> Светлая</label>
+            <label><input type="radio" name="theme" value="light" /> Светлая</label>
             <label><input type="radio" name="theme" value="dark" /> Тёмная</label>
             <button onclick="saveProfile()">Готово! В чат</button>
         </div>
@@ -354,12 +393,17 @@
     <!-- Основной экран чата -->
     <div id="chat-screen">
         <div class="sidebar">
-            <div class="sidebar-header">Чаты</div>
+            <div class="sidebar-header">
+                <div>Чаты</div>
+                <div class="user-badge" onclick="toggleProfileMenu()">
+                    <div class="user-avatar" id="sidebar-avatar">?</div>
+                </div>
+            </div>
             <div class="search-box">
                 <input type="text" class="search-input" placeholder="Поиск по юзернейму..." oninput="searchUsers(this.value)" />
             </div>
             <div class="chats-list">
-                <div class="chat-item active" data-chat-id="support" onclick="switchChat('support')">
+                <div class="chat-item" data-chat-id="support" onclick="switchChat('support')">
                     <div class="chat-item-icon">💬</div>
                     <div class="chat-item-name">Техподдержка Forevo</div>
                 </div>
@@ -370,15 +414,13 @@
         </div>
         <div class="main">
             <div class="chat-header">
-                <div class="user-badge" onclick="toggleProfileMenu()">
-                    <div class="user-avatar" id="header-avatar">?</div>
-                    <div class="user-nick" id="header-nick">Пользователь</div>
-                </div>
+                <div class="user-nick" id="header-nick">Выберите чат для общения</div>
             </div>
-            <div id="msgs-area" class="msgs-area"></div>
+            <div id="chat-placeholder" class="chat-placeholder">Выберите чат, чтобы начать общение</div>
+            <div id="msgs-area" class="msgs-area" style="display: none;"></div>
             <div class="input-area">
-                <textarea id="msg-input" placeholder="Введите сообщение..."></textarea>
-                <button id="send-btn" onclick="sendMessage()">Отправить</button>
+                <textarea id="msg-input" placeholder="Введите сообщение..." disabled></textarea>
+                <button id="send-btn" onclick="sendMessage()" disabled>Отправить</button>
             </div>
         </div>
     </div>
@@ -388,6 +430,7 @@
         <div class="menu-item" onclick="changeProfileField('nick')"><i>✏️</i> Поменять имя</div>
         <div class="menu-item" onclick="changeProfileField('username')"><i>✏️</i> Поменять юзернейм</div>
         <div class="menu-item" onclick="document.getElementById('avatar-upload-popup').click()"><i>🖼️</i> Поменять аватарку</div>
+        <div class="menu-item" onclick="toggleTheme()"><i>🌙</i> Переключить тему</div>
         <div class="menu-item" onclick="logout()"><i>🚪</i> Выйти из аккаунта</div>
         <div class="menu-item" onclick="deleteAccount()"><i>🗑️</i> Удалить аккаунт</div>
     </div>
@@ -403,11 +446,33 @@
     <script>
         let ws;
         let currentUser = null;
-        let currentChatId = "support";
+        let currentChatId = null;
         let uploadedAvatarUrl = null;
 
+        // Переключение темы
+        function toggleTheme() {
+            document.body.classList.toggle("dark-theme");
+            if (currentUser && currentUser.profile) {
+                currentUser.profile.theme = document.body.classList.contains("dark-theme") ? "dark" : "light";
+                localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+            }
+        }
+
+        // Применяем тему при загрузке
+        function applySavedTheme() {
+            const savedUser = localStorage.getItem("forevo-user");
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                if (user.profile?.theme === "dark") {
+                    document.body.classList.add("dark-theme");
+                }
+            }
+        }
+
         function connectWebSocket() {
+            if (!currentChatId) return;
             if (ws) ws.close();
+
             const protocol = location.protocol === "https:" ? "wss:" : "ws:";
             const url = protocol + "//" + location.host + "/chat?chatId=" + currentChatId;
             ws = new WebSocket(url);
@@ -423,7 +488,10 @@
                 }
             };
             ws.onerror = (e) => console.error("❌ Ошибка WebSocket:", e);
-            ws.onclose = () => setTimeout(connectWebSocket, 1000);
+            ws.onclose = () => {
+                console.log("🔁 WebSocket закрыт. Переподключение...");
+                setTimeout(() => connectWebSocket(), 2000);
+            };
         }
 
         function createMsgElement(text, isOwn, quoteText = null) {
@@ -443,9 +511,18 @@
         }
 
         function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("Соединение не установлено");
+                return;
+            }
+            if (!currentUser?.profile?.nick) {
+                alert("Профиль не загружен");
+                return;
+            }
+
             const input = document.getElementById("msg-input");
             const text = input.value.trim();
-            if (!text || !currentUser) return;
+            if (!text) return;
 
             const message = {
                 chatId: currentChatId,
@@ -459,9 +536,19 @@
         }
 
         function switchChat(chatId) {
-            document.querySelectorAll(".chat-item.active").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
             document.querySelector(`[data-chat-id="${chatId}"]`)?.classList.add("active");
+
             currentChatId = chatId;
+
+            document.getElementById("header-nick").textContent = 
+                chatId === "support" ? "Техподдержка Forevo" : "Чат";
+
+            document.getElementById("chat-placeholder").style.display = "none";
+            document.getElementById("msgs-area").style.display = "flex";
+            document.getElementById("msg-input").disabled = false;
+            document.getElementById("send-btn").disabled = false;
+
             connectWebSocket();
         }
 
@@ -493,11 +580,15 @@
         });
 
         window.onload = () => {
+            applySavedTheme();
             const savedUser = localStorage.getItem("forevo-user");
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
+                if (currentUser.profile?.theme === "dark") {
+                    document.body.classList.add("dark-theme");
+                }
+                updateSidebarAvatar();
                 showChat();
-                updateHeaderProfile();
             } else {
                 showAuth();
             }
@@ -506,7 +597,7 @@
         function showAuth() {
             document.getElementById("auth-screen").style.display = "flex";
             document.getElementById("chat-screen").style.display = "none";
-            // Очищаем форму профиля при выходе
+            // Очищаем форму
             document.getElementById("auth-step-2").style.display = "none";
             document.getElementById("auth-step-1").style.display = "block";
             document.getElementById("login-form").style.display = "none";
@@ -515,8 +606,7 @@
         function showChat() {
             document.getElementById("auth-screen").style.display = "none";
             document.getElementById("chat-screen").style.display = "flex";
-            connectWebSocket();
-            updateHeaderProfile();
+            updateSidebarAvatar();
         }
 
         function showLogin() {
@@ -560,8 +650,11 @@
             } else {
                 currentUser = data.user;
                 localStorage.setItem("forevo-user", JSON.stringify(currentUser));
+                updateSidebarAvatar();
+                if (currentUser.profile?.theme === "dark") {
+                    document.body.classList.add("dark-theme");
+                }
                 showChat();
-                updateHeaderProfile();
             }
         }
 
@@ -573,7 +666,7 @@
                     uploadedAvatarUrl = e.target.result;
                     if (currentUser?.profile) {
                         currentUser.profile.avatar = uploadedAvatarUrl;
-                        updateHeaderProfile();
+                        updateSidebarAvatar();
                         saveProfileToServer();
                     }
                 };
@@ -581,18 +674,21 @@
             }
         }
 
-        function updateHeaderProfile() {
+        function updateSidebarAvatar() {
             if (!currentUser?.profile) return;
-            const avatar = document.getElementById("header-avatar");
+            const avatar = document.getElementById("sidebar-avatar");
             const nick = document.getElementById("header-nick");
-            nick.textContent = currentUser.profile.nick;
+            if (nick) nick.textContent = currentUser.profile.nick || "Пользователь";
 
             if (uploadedAvatarUrl || currentUser.profile.avatar?.startsWith("http")) {
                 avatar.style.background = "none";
                 avatar.innerHTML = `<img src="${uploadedAvatarUrl || currentUser.profile.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            } else if (currentUser.profile.avatar) {
+                avatar.style.background = "var(--brand-color)";
+                avatar.textContent = currentUser.profile.avatar.slice(0, 1).toUpperCase();
             } else {
                 avatar.style.background = "var(--brand-color)";
-                avatar.innerHTML = (currentUser.profile.avatar || "?").slice(0, 1).toUpperCase();
+                avatar.textContent = "?";
             }
         }
 
@@ -606,7 +702,7 @@
             if (value) {
                 currentUser.profile[field] = value;
                 localStorage.setItem("forevo-user", JSON.stringify(currentUser));
-                updateHeaderProfile();
+                updateSidebarAvatar();
                 saveProfileToServer();
             }
         }
@@ -620,9 +716,7 @@
         }
 
         function searchUsers(query) {
-            // Пока просто заглушка
             console.log("Поиск:", query);
-            // В будущем: подсветка, фильтрация чатов
         }
 
         function deleteAccount() {
@@ -637,7 +731,7 @@
         function logout() {
             localStorage.removeItem("forevo-user");
             currentUser = null;
-            showAuth();  // Теперь всегда показывает шаг 1
+            showAuth();
         }
     </script>
 </body>
